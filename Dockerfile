@@ -18,6 +18,9 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # Copy requirements first (for better caching)
 COPY requirements.txt .
 
+# Install pip update
+RUN pip install --no-cache-dir --upgrade pip
+
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
