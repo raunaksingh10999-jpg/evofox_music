@@ -10,6 +10,10 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
+# Create a virtual environment to fix the pip root user warning
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Copy requirements first (for better caching)
 COPY requirements.txt .
 
