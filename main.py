@@ -121,6 +121,24 @@ async def stream_end(client, update):
     if title:
         await app.send_message(chat_id, f"▶️ Now playing: **{title}**")
 
+# --- Register Handlers ---
+import importlib
+handlers_to_load = [
+    ("handlers.start", "register_start_handler"),
+    ("handlers.stats", "register_stats_handler"),
+    ("handlers.sudo", "register_sudo_handlers"),
+    ("handlers.broadcast", "register_broadcast_handler"),
+    ("handlers.blacklist", "register_blacklist_handlers")
+]
+
+for module_name, func_name in handlers_to_load:
+    try:
+        mod = importlib.import_module(module_name)
+        func = getattr(mod, func_name)
+        func(app)
+    except Exception as e:
+        print(f"Failed to load {module_name}: {e}")
+
 # --- Run ---
 call_py.start()
 app.run()
