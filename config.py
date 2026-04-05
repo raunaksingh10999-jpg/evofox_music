@@ -1,17 +1,29 @@
-API_ID = 123456              # from my.telegram.org
-API_HASH = "your_api_hash"   # from my.telegram.org
-STRING_SESSION = "your_string_session"
-BOT_TOKEN = "your_bot_token" # from @BotFather (optional, for commands)
+import os
+from dotenv import load_dotenv
 
-# --- Bot Owner & Admin Configuration ---
-OWNER_ID = 123456789         # Your Telegram User ID
-OWNER_USERNAME = "your_username" # Your Telegram Username (without @)
-SUDO_USERS = []              # List of Sudo User IDs, e.g. [123456, 987654]
-BOT_USERNAME = "yourbot"     # Your Bot Username (without @)
+load_dotenv()
 
-# --- Database & Logging ---
-MONGO_DB_URL = "mongodb+srv://..."  # MongoDB Connection URL
-LOG_GROUP_ID = -100123456789        # ID of the Log Group
+API_ID         = int(os.environ.get("API_ID", 0))
+API_HASH       = os.environ.get("API_HASH", "")
+STRING_SESSION = os.environ.get("STRING_SESSION", "")
+BOT_TOKEN      = os.environ.get("BOT_TOKEN", "")
+OWNER_ID       = int(os.environ.get("OWNER_ID", 0))
+OWNER_USERNAME = os.environ.get("OWNER_USERNAME", "")
+BOT_USERNAME   = os.environ.get("BOT_USERNAME", "")
+START_IMAGE    = os.environ.get("START_IMAGE", "")
+LOG_GROUP_ID   = int(os.environ.get("LOG_GROUP_ID", 0))
 
-# --- Customization ---
-START_IMAGE = "https://telegra.ph/file/your-music-image.jpg" # Image on /start
+_sudo_env = os.environ.get("SUDO_USERS", "")
+SUDO_USERS = list(set(
+    [OWNER_ID] +
+    [int(uid.strip()) for uid in _sudo_env.split()
+     if uid.strip().isdigit()]
+))
+
+def get_sudo_list():
+    try:
+        from database.sudo_db import get_all_sudos
+        db_sudos = [s["user_id"] for s in get_all_sudos()]
+    except Exception:
+        db_sudos = []
+    return list(set([OWNER_ID] + db_sudos))
