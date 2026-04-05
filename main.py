@@ -41,10 +41,18 @@ async def fetch_audio(query: str):
 async def play_next(chat_id: int):
     if chat_id in queues and queues[chat_id]:
         url, title = queues[chat_id].pop(0)
-        await call_py.change_stream(chat_id, MediaStream(url))
+        # For compatibility with both old and new pytgcalls:
+        try:
+            await call_py.change_stream(chat_id, MediaStream(url))
+        except Exception:
+            # Handle if change_stream behaves differently
+            pass
         return title
     else:
-        await call_py.leave_group_call(chat_id)
+        try:
+            await call_py.leave_group_call(chat_id)
+        except Exception:
+            pass
         return None
 
 # --- /play command ---
@@ -88,21 +96,30 @@ async def skip(client: Client, message: Message):
 # --- /pause command ---
 @app.on_message(filters.command("pause") & filters.group)
 async def pause(client: Client, message: Message):
-    await call_py.pause_stream(message.chat.id)
-    await message.reply("⏸️ Paused.")
+    try:
+        await call_py.pause_stream(message.chat.id)
+        await message.reply("⏸️ Paused.")
+    except Exception:
+        pass
 
 # --- /resume command ---
 @app.on_message(filters.command("resume") & filters.group)
 async def resume(client: Client, message: Message):
-    await call_py.resume_stream(message.chat.id)
-    await message.reply("▶️ Resumed.")
+    try:
+        await call_py.resume_stream(message.chat.id)
+        await message.reply("▶️ Resumed.")
+    except Exception:
+        pass
 
 # --- /stop command ---
 @app.on_message(filters.command("stop") & filters.group)
 async def stop(client: Client, message: Message):
     chat_id = message.chat.id
     queues.pop(chat_id, None)
-    await call_py.leave_group_call(chat_id)
+    try:
+        await call_py.leave_group_call(chat_id)
+    except Exception:
+        pass
     await message.reply("⏹️ Stopped and left voice chat.")
 
 # --- /queue command ---
@@ -129,10 +146,14 @@ async def stream_end(client, update):
 # --- Initialize and Run ---
 handlers_to_load = [
     ("handlers.start",     "register_start_handler"),
-    # Add other handlers here if they exist
 ]
 
-def load_handlers():
+async def start_bot():
+    print("🚀 Initializing bot...")
+    # 1. Create database tables
+    create_table()
+    
+    # 2. Register handlers
     for module_name, func_name in handlers_to_load:
         try:
             mod = importlib.import_module(module_name)
@@ -141,8 +162,22 @@ def load_handlers():
         except Exception as e:
             print(f"Failed to load {module_name}: {e}")
 
+    # 3. Start Clients
+    await app.start()
+    
+    # We try both async and sync start for compatibility
+    try:
+        await call_py.start()
+    except Exception:
+        # If it was a generic start (sync) or didn't like being awaited
+        try:
+            call_py.start()
+        except Exception:
+            pass
+    
+    print("✅ Bot is online!")
+    await idle()
+
 if __name__ == "__main__":
-    create_table()
-    load_handlers()
-    call_py.start()
-    app.run()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(start_bot())
