@@ -1,10 +1,12 @@
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.types import Message
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream
 from pytgcalls.types.stream import StreamAudioQuality
-import yt_dlp, asyncio
+import yt_dlp, asyncio, importlib
 from config import API_ID, API_HASH, STRING_SESSION
+from handlers.start import register_start_handler
+from database.db import create_table
 
 # --- Client setup ---
 app = Client(
@@ -19,18 +21,22 @@ call_py = PyTgCalls(app)
 queues = {}
 
 # --- YouTube audio fetcher ---
-def fetch_audio(query: str):
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "quiet": True,
-        "default_search": "ytsearch",
-        "noplaylist": True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(query, download=False)
-        if "entries" in info:
-            info = info["entries"][0]
-        return info["url"], info["title"]
+async def fetch_audio(query: str):
+    loop = asyncio.get_event_loop()
+    def _fetch():
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "quiet": True,
+            "default_search": "ytsearch",
+            "noplaylist": True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(query, download=False)
+            if "entries" in info:
+                info = info["entries"][0]
+            return info["url"], info["title"]
+
+    return await loop.run_in_executor(None, _fetch)
 
 # --- Play next in queue ---
 async def play_next(chat_id: int):
@@ -53,7 +59,7 @@ async def play(client: Client, message: Message):
     msg = await message.reply("🔍 Searching...")
 
     try:
-        url, title = fetch_audio(query)
+        url, title = await fetch_audio(query)
     except Exception as e:
         await msg.edit(f"❌ Error fetching audio: {e}")
         return
@@ -121,24 +127,23 @@ async def stream_end(client, update):
     if title:
         await app.send_message(chat_id, f"▶️ Now playing: **{title}**")
 
-# --- Register Handlers ---
-import importlib
+# --- Initialize and Run ---
 handlers_to_load = [
-    handlers_to_load = [
     ("handlers.start",     "register_start_handler"),
-    ("handlers.stats",     "register_stats_handler"),
-    ("handlers.sudo",      "register_sudo_handler"),
-    ("handlers.broadcast", "register_broadcast_handler"),
+    # Add other handlers here if they exist
 ]
 
-for module_name, func_name in handlers_to_load:
-    try:
-        mod = importlib.import_module(module_name)
-        func = getattr(mod, func_name)
-        func(app)
-    except Exception as e:
-        print(f"Failed to load {module_name}: {e}")
+def load_handlers():
+    for module_name, func_name in handlers_to_load:
+        try:
+            mod = importlib.import_module(module_name)
+            func = getattr(mod, func_name)
+            func(app)
+        except Exception as e:
+            print(f"Failed to load {module_name}: {e}")
 
-# --- Run ---
-call_py.start()
-app.run()
+if __name__ == "__main__":
+    create_table()
+    load_handlers()
+    call_py.start()
+    app.run()
