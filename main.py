@@ -124,11 +124,11 @@ async def stream_end(client, update):
 # --- Register Handlers ---
 import importlib
 handlers_to_load = [
-    ("handlers.start", "register_start_handler"),
-    ("handlers.stats", "register_stats_handler"),
-    ("handlers.sudo", "register_sudo_handlers"),
+    handlers_to_load = [
+    ("handlers.start",     "register_start_handler"),
+    ("handlers.stats",     "register_stats_handler"),
+    ("handlers.sudo",      "register_sudo_handler"),
     ("handlers.broadcast", "register_broadcast_handler"),
-    ("handlers.blacklist", "register_blacklist_handlers")
 ]
 
 for module_name, func_name in handlers_to_load:
