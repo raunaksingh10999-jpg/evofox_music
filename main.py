@@ -2,7 +2,6 @@ from pyrogram import Client, filters, idle
 from pyrogram.types import Message
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream
-from pytgcalls.types.stream import StreamAudioQuality
 import yt_dlp, asyncio, importlib
 from config import API_ID, API_HASH, STRING_SESSION
 from handlers.start import register_start_handler
